@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Título de la página que se muestra en la pestaña del navegador -->
+  <title>Trivia App</title>
+  <link rel="stylesheet" href="trivia.css">
+  <link rel="manifest" href="manifest.json">
+
+</head>
+<body>
+
+  <!-- Contenedor principal donde se mostrará el contenido dinámico de la app -->
+  <main id="app"></main>
+
+  <!-- Menú de navegación ubicado generalmente en la parte superior de la página -->
+<nav id="top-menu">
+  <a href="#home">Inicio</a>
+  <a href="#quiz">Preguntas</a>
+  <a href="#favorites">Favoritos</a>
+  <a href="#search">Buscar</a>
+  <a href="#filter">Filtrar</a>
+  <a href="#info">Información</a>
+  <a href="#triviaTiempo">TriviaConTiempo</a>
+  <a href="iniciarsesion.html">Iniciar Sesión</a> 
+</nav>
+  <script type="module" src="script.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(() => console.log("Service Worker registrado"))
+      .catch((err) => console.log("Fallo en registro", err));
+  }
+</script>
+
+
+
+</body>
+</html>
+
+

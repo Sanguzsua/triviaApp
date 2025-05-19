@@ -1,0 +1,129 @@
+/* ===== Estilo base ===== */
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #1a1a1a;
+  color: #f0f0f0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== Menú inferior fijo ===== */
+#bottom-menu {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #2c2c2c;
+  display: flex;
+  justify-content: space-around;
+  padding: 12px 0;
+  z-index: 1000;
+  box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.6);
+  border-top: 1px solid #444;
+  overflow-x: auto;
+}
+
+/* ===== Menú superior (opcional) ===== */
+#top-menu {
+  background-color: #000000;
+  display: flex;
+  justify-content: space-around;
+  padding: 12px 0;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+  overflow-x: auto;
+}
+
+/* ===== Enlaces de los menús ===== */
+#top-menu a,
+#bottom-menu a {
+  color: #FF4F81; /* rojo magenta suave */
+  text-decoration: none;
+  padding: 8px 10px;
+  font-size: 1rem;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#top-menu a:hover,
+#bottom-menu a:hover {
+  background-color: rgba(255, 79, 129, 0.15);
+}
+
+/* ===== Contenido principal ===== */
+#app {
+  flex: 1;
+  padding: 20px 16px 80px; /* espacio para el menú inferior */
+  background-color: #2b0a0a; /* vino suave más apagado */
+}
+
+/* ===== Botones con acento rojo suave ===== */
+button {
+  background-color: #000000;
+  color: #FF4F81;
+  padding: 12px 20px;
+  border: 2px solid #FF4F81;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  width: 100%;
+  max-width: 300px;
+  margin: 15px auto;
+  display: block;
+  box-shadow: 0 0 10px rgba(255, 79, 129, 0.3);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+button:hover {
+  background-color: #000000;
+  transform: scale(1.05);
+}
+
+/* ===== Enlaces generales ===== */
+a {
+  display: block;
+  margin: 8px auto;
+  text-align: center;
+  color: #FF4F81;
+  font-weight: bold;
+}
+
+/* ===== Encabezados ===== */
+h2 {
+  text-align: center;
+  font-size: 1.8rem;
+  color: #f0f0f0;
+  margin-bottom: 20px;
+  text-shadow: 0 0 6px #FF4F81;
+}
+
+/* ===== Responsivo ===== */
+@media (max-width: 600px) {
+  #top-menu,
+  #bottom-menu {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 4px;
+  }
+
+  #top-menu a,
+  #bottom-menu a {
+    font-size: 0.9rem;
+    padding: 10px 6px;
+  }
+
+  button {
+    font-size: 1rem;
+    padding: 10px 16px;
+  }
+
+  h2 {
+    font-size: 1.4rem;
+  }
+}
