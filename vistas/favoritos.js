@@ -1,119 +1,182 @@
-// Exporta la función principal que muestra los favoritos en el contenedor dado
-export function Favorites(container) {
-  // Obtiene los favoritos del localStorage o inicializa un arreglo vacío si no hay ninguno
+// Solo importa auth y db desde tu archivo
+import { auth, db } from './iniciodesesion.js';
+
+// Importa funciones de Firestore directamente desde Firebase
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  deleteDoc,
+  updateDoc,
+  doc
+} from 'https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js';
+
+
+export async function Favorites(container) {
+  await loadFavoritesFromFirestore();
+
   let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
 
-  // Inicializa el contenido del contenedor con un título
   container.innerHTML = '<h2>Favoritos</h2>';
 
-  // Si no hay favoritos guardados, muestra un mensaje y termina la función
   if (favorites.length === 0) {
     container.innerHTML += '<p>No tienes favoritos guardados.</p>';
     return;
   }
 
-  // Recorre cada pregunta favorita para mostrarla en pantalla
   favorites.forEach(q => {
-    const questionDiv = document.createElement('div');
-    const encodedQuestion = encodeURIComponent(JSON.stringify(q)); // Codifica la pregunta para poder usarla en atributos HTML
-    const answers = Array.isArray(q.answers) ? q.answers : []; // Asegura que las respuestas sean un arreglo
+    // Mezclar respuestas correcta e incorrectas para mostrar opciones desordenadas
+    const respuestas = [q.correcta, ...q.incorrectas];
+    const shuffledAnswers = respuestas.sort(() => Math.random() - 0.5);
 
-    // Construye el HTML para cada pregunta
+    const questionDiv = document.createElement('div');
+    const encodedQuestion = encodeURIComponent(JSON.stringify(q));
+
     questionDiv.innerHTML = `
-      <p><strong>${q.question}</strong></p>
+      <p><strong>${q.pregunta}</strong></p>
       <ul>
-        ${answers.map(ans => `<li>${ans}</li>`).join('')}
+        ${shuffledAnswers.map(ans => `<li>${ans}</li>`).join('')}
       </ul>
       <button class="remove-from-favorites-btn" data-question="${encodedQuestion}">Eliminar</button>
       <button class="edit-favorite-btn" data-question="${encodedQuestion}">Editar</button>
+      <hr>
     `;
-    container.appendChild(questionDiv); // Agrega el div al contenedor principal
+
+    container.appendChild(questionDiv);
   });
 
-  // Maneja los clics dentro del contenedor
-  container.addEventListener('click', (event) => {
-    // Si se hace clic en el botón "Eliminar"
+  container.addEventListener('click', async (event) => {
     if (event.target.classList.contains('remove-from-favorites-btn')) {
       const encoded = event.target.getAttribute('data-question');
-      const question = JSON.parse(decodeURIComponent(encoded)); // Decodifica y parsea la pregunta
-      removeFromFavorites(question); // Llama a la función para eliminar
+      const question = JSON.parse(decodeURIComponent(encoded));
+      await removeFromFavorites(question);
+      Favorites(container);  // refrescar lista
     }
 
-    // Si se hace clic en el botón "Editar"
     if (event.target.classList.contains('edit-favorite-btn')) {
       const encoded = event.target.getAttribute('data-question');
       const question = JSON.parse(decodeURIComponent(encoded));
-      editFavorite(question); // Llama a la función para editar
+      editFavorite(question, container);
     }
   });
 }
 
-// Elimina una pregunta de la lista de favoritos
-function removeFromFavorites(question) {
-  let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-  favorites = favorites.filter(q => q.question !== question.question); // Filtra para eliminar la pregunta
-  localStorage.setItem('favorites', JSON.stringify(favorites)); // Guarda la lista actualizada
+async function removeFromFavorites(question) {
+  const user = auth.currentUser;
+  if (!user) {
+    alert('Usuario no autenticado');
+    return;
+  }
 
-  const app = document.getElementById('app');
-  Favorites(app); // Vuelve a renderizar la lista
+  const favoritosRef = collection(db, "favoritos");
+  const q = query(favoritosRef, where("userId", "==", user.uid), where("pregunta", "==", question.pregunta));
+  const querySnapshot = await getDocs(q);
+
+  for (const docSnap of querySnapshot.docs) {
+    await deleteDoc(doc(db, "favoritos", docSnap.id));
+  }
+
+  // Actualizar localStorage
+  let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+  favorites = favorites.filter(q => q.pregunta !== question.pregunta);
+  localStorage.setItem('favorites', JSON.stringify(favorites));
 }
 
-// Permite editar una pregunta favorita
-function editFavorite(question) {
-  const app = document.getElementById('app');
+function editFavorite(question, container) {
   const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+  container.innerHTML = '<h2>Editar favorito</h2>';
 
-  const allDivs = Array.from(app.querySelectorAll('div')); // Obtiene todos los divs dentro de app
-  const questionDiv = allDivs.find(div => div.textContent.includes(question.question)); // Busca el div correspondiente a la pregunta
+  // Combinar las incorrectas en una cadena para el input
+  const incorrectasStr = Array.isArray(question.incorrectas) ? question.incorrectas.join(', ') : '';
 
-  if (!questionDiv) return;
+  container.innerHTML += `
+    <label>Pregunta:</label><br/>
+    <input type="text" id="edit-question" value="${question.pregunta}" style="width: 100%; margin-bottom: 8px;" />
 
-  // Muestra un formulario para editar la pregunta
-  questionDiv.innerHTML = `
-    <label>Pregunta:</label>
-    <input type="text" id="edit-question" value="${question.question}" style="width: 100%; margin-bottom: 8px;" />
+    <label>Respuestas incorrectas (separadas por coma):</label><br/>
+    <input type="text" id="edit-incorrectas" value="${incorrectasStr}" style="width: 100%; margin-bottom: 8px;" />
 
-    <label>Respuestas (separadas por coma):</label>
-    <input type="text" id="edit-answers" value="${(Array.isArray(question.answers) ? question.answers : []).join(', ')}" style="width: 100%; margin-bottom: 8px;" />
-
-    <label>Respuesta correcta:</label>
-    <input type="text" id="edit-correct-answer" value="${question.correctAnswer || ''}" style="width: 100%; margin-bottom: 8px;" />
+    <label>Respuesta correcta:</label><br/>
+    <input type="text" id="edit-correcta" value="${question.correcta}" style="width: 100%; margin-bottom: 8px;" />
 
     <button id="save-edit">Guardar ✅</button>
     <button id="cancel-edit">Cancelar ❌</button>
   `;
 
-  // Guardar cambios al hacer clic en "Guardar"
-  questionDiv.querySelector('#save-edit').addEventListener('click', () => {
-    const newQuestion = questionDiv.querySelector('#edit-question').value.trim();
-    const newAnswersRaw = questionDiv.querySelector('#edit-answers').value.trim();
-    const newCorrectAnswer = questionDiv.querySelector('#edit-correct-answer').value.trim();
-    const newAnswers = newAnswersRaw.split(',').map(ans => ans.trim()); // Convierte el texto en array
+  container.querySelector('#save-edit').addEventListener('click', async () => {
+    const newPregunta = container.querySelector('#edit-question').value.trim();
+    const newIncorrectasRaw = container.querySelector('#edit-incorrectas').value.trim();
+    const newCorrecta = container.querySelector('#edit-correcta').value.trim();
 
-    // Validaciones
-    if (!newQuestion || newAnswers.length === 0 || !newCorrectAnswer) {
+    const newIncorrectas = newIncorrectasRaw.split(',').map(ans => ans.trim()).filter(ans => ans.length > 0);
+
+    if (!newPregunta || newIncorrectas.length === 0 || !newCorrecta) {
       alert('Por favor completa todos los campos.');
       return;
     }
 
-    if (!newAnswers.includes(newCorrectAnswer)) {
-      alert('La respuesta correcta debe estar entre las opciones.');
+    if (newIncorrectas.includes(newCorrecta)) {
+      alert('La respuesta correcta no puede estar entre las respuestas incorrectas.');
       return;
     }
 
-    // Actualiza la lista de favoritos
-    const updatedFavorites = favorites.map(q =>
-      q.question === question.question
-        ? { ...q, question: newQuestion, answers: newAnswers, correctAnswer: newCorrectAnswer }
-        : q
+    const user = auth.currentUser;
+    if (!user) {
+      alert('Usuario no autenticado');
+      return;
+    }
+
+    const newFavorite = {
+      ...question,
+      pregunta: newPregunta,
+      incorrectas: newIncorrectas,
+      correcta: newCorrecta,
+      userId: user.uid,
+      guardadoEn: question.guardadoEn,
+      categoria: question.categoria,
+      dificultad: question.dificultad,
+      tipo: question.tipo,
+    };
+
+    // Actualizar Firestore
+    const favoritosRef = collection(db, "favoritos");
+    const q = query(favoritosRef, where("userId", "==", user.uid), where("pregunta", "==", question.pregunta));
+    const querySnapshot = await getDocs(q);
+
+    for (const docSnap of querySnapshot.docs) {
+      await updateDoc(doc(db, "favoritos", docSnap.id), newFavorite);
+    }
+
+    // Actualizar localStorage
+    const updatedFavorites = favorites.map(fav =>
+      fav.pregunta === question.pregunta ? newFavorite : fav
     );
+    localStorage.setItem('favorites', JSON.stringify(updatedFavorites));
 
-    localStorage.setItem('favorites', JSON.stringify(updatedFavorites)); // Guarda en localStorage
-    Favorites(app); // Recarga la vista
+    Favorites(container);
   });
 
-  // Cancela la edición y vuelve a la lista
-  questionDiv.querySelector('#cancel-edit').addEventListener('click', () => {
-    Favorites(app);
+  container.querySelector('#cancel-edit').addEventListener('click', () => {
+    Favorites(container);
   });
+}
+
+async function loadFavoritesFromFirestore() {
+  const user = auth.currentUser;
+  if (!user) {
+    localStorage.setItem('favorites', JSON.stringify([]));
+    return;
+  }
+
+  const favoritosRef = collection(db, "favoritos");
+  const q = query(favoritosRef, where("userId", "==", user.uid));
+  const querySnapshot = await getDocs(q);
+
+  const favoritos = [];
+  querySnapshot.forEach(docSnap => {
+    favoritos.push(docSnap.data());
+  });
+
+  localStorage.setItem('favorites', JSON.stringify(favoritos));
 }
